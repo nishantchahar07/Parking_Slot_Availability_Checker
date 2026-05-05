@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPS — Driver Dashboard</title>
+    <link rel="icon" type="image/png" href="icons8-parking-96.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!-- Navbar -->
+<nav class="navbar">
+    <a href="#" class="navbar-brand"><img src="icons8-parking-96.png" alt="IPS">Intelligent Parking</a>
+    <div class="navbar-actions">
+        <span class="user-badge">🚗 <span id="user-name">Driver</span></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<div class="container page-wrapper">
+    <div id="alert" class="alert"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" onclick="showSection('search')">🔍 Find Parking</button>
+        <button class="tab" onclick="showSection('bookings')">📋 My Bookings</button>
+    </div>
+
+    <!-- ========== SEARCH SECTION ========== -->
+    <div id="section-search">
+        <!-- Search Bar -->
+        <div class="glass card mb-24">
+            <div class="grid-3" style="align-items:end">
+                <div class="form-group" style="margin:0">
+                    <label class="form-label">City</label>
+                    <input type="text" class="form-input" id="search-city" placeholder="e.g. Mumbai, Delhi...">
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label class="form-label">Slot Type</label>
+                    <select class="form-select" id="search-type">
+                        <option value="ALL">All Types</option>
+                        <option value="STANDARD">Standard</option>
+                        <option value="COVERED">Covered</option>
+                        <option value="EV_CHARGING">EV Charging</option>
+                        <option value="HANDICAP">Handicap</option>
+                        <option value="OPEN_AIR">Open Air</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-lg" onclick="searchFacilities()">Search Parking</button>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <div id="results-loading" class="hidden"><div class="spinner"></div></div>
+        <div id="no-results" class="hidden" style="text-align:center;padding:60px 0;">
+            <p style="font-size:3rem;margin-bottom:16px">🅿️</p>
+            <h3>No parking facilities found</h3>
+            <p class="text-secondary" style="margin-top:8px">Try a different city or clear filters</p>
+        </div>
+        <div id="facility-list" class="facility-grid"></div>
+
+        <!-- Slot View Modal (expanded view) -->
+        <div id="slot-view" class="hidden">
+            <div class="flex-between mb-24">
+                <div>
+                    <button class="btn btn-outline btn-sm mb-16" onclick="backToSearch()">← Back to Results</button>
+                    <h2 id="sv-name"></h2>
+                    <p class="text-secondary" id="sv-address"></p>
+                </div>
+                <div class="text-secondary" style="text-align:right">
+                    <p>Price: <strong class="text-emerald" id="sv-price"></strong>/hr</p>
+                    <p id="sv-hours"></p>
+                </div>
+            </div>
+            <div class="stats-grid mb-24">
+                <div class="stat-card glass"><div class="stat-value text-gradient" id="sv-total">0</div><div class="stat-label">Total Slots</div></div>
+                <div class="stat-card glass"><div class="stat-value text-emerald" id="sv-available">0</div><div class="stat-label">Available</div></div>
+                <div class="stat-card glass"><div class="stat-value text-red" id="sv-occupied">0</div><div class="stat-label">Occupied</div></div>
+                <div class="stat-card glass"><div class="stat-value text-amber" id="sv-reserved">0</div><div class="stat-label">Reserved</div></div>
+            </div>
+            <!-- Legend -->
+            <div class="glass card mb-16" style="padding:12px 20px;">
+                <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:0.8rem;font-weight:600;">
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(16,185,129,0.4);margin-right:6px;vertical-align:middle"></span>Free</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(239,68,68,0.4);margin-right:6px;vertical-align:middle"></span>Occupied</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(245,158,11,0.4);margin-right:6px;vertical-align:middle"></span>Reserved</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(6,182,212,0.4);margin-right:6px;vertical-align:middle"></span>EV Charging</span>
+                    <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:rgba(168,85,247,0.4);margin-right:6px;vertical-align:middle"></span>Handicap</span>
+                </div>
+            </div>
+            <div class="glass card">
+                <div class="slot-grid" id="sv-slots"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== BOOKINGS SECTION ========== -->
+    <div id="section-bookings" class="hidden">
+        <div class="glass card">
+            <div class="card-header"><h3 class="card-title">My Bookings</h3><button class="btn btn-outline btn-sm" onclick="loadBookings()">↻ Refresh</button></div>
+            <div id="bookings-empty" class="hidden" style="text-align:center;padding:40px 0"><p style="font-size:2rem;margin-bottom:8px">📋</p><p class="text-secondary">No bookings yet</p></div>
+            <div style="overflow-x:auto"><table class="bookings-table" id="bookings-table"><thead><tr><th>Facility</th><th>Slot</th><th>Vehicle</th><th>Start Time</th><th>Status</th><th>Fee</th><th>Actions</th></tr></thead><tbody id="bookings-body"></tbody></table></div>
+        </div>
+    </div>
+</div>
+
+<!-- Booking Modal -->
+<div class="modal-overlay" id="book-modal">
+    <div class="modal glass">
+        <h3 class="modal-title">🅿️ Book Parking Slot</h3>
+        <p class="text-secondary mb-16">Slot: <strong id="bm-slot"></strong> | Type: <strong id="bm-type"></strong></p>
+        <form onsubmit="confirmBooking(event)">
+            <div class="form-group">
+                <label class="form-label">Vehicle Plate Number</label>
+                <input type="text" class="form-input" id="bm-plate" placeholder="MH 01 AB 1234" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Vehicle Type</label>
+                <select class="form-select" id="bm-vtype">
+                    <option value="CAR">Car</option>
+                    <option value="MOTORCYCLE">Motorcycle</option>
+                    <option value="EV">Electric Vehicle</option>
+                    <option value="SUV">SUV</option>
+                </select>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:20px">
+                <button type="button" class="btn btn-outline" style="flex:1" onclick="closeModal('book-modal')">Cancel</button>
+                <button type="submit" class="btn btn-success" style="flex:1" id="bm-btn">Confirm Booking</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Billing Slip Modal -->
+<div class="modal-overlay" id="slip-modal">
+    <div class="modal glass">
+        <div class="slip">
+            <h3 style="font-size:1.5rem;font-weight:900;margin-bottom:20px">🧾 Payment Receipt</h3>
+            <div class="slip-row"><span>Facility</span><strong id="sl-facility"></strong></div>
+            <div class="slip-row"><span>Slot</span><strong id="sl-slot"></strong></div>
+            <div class="slip-row"><span>Vehicle</span><strong id="sl-vehicle"></strong></div>
+            <div class="slip-row"><span>Duration</span><strong id="sl-duration"></strong></div>
+            <div class="slip-row"><span>Rate</span><strong id="sl-rate"></strong></div>
+            <div class="slip-total">₹<span id="sl-fee">0</span></div>
+            <p class="text-muted" style="font-size:0.75rem;margin-bottom:20px">Thank you for using Intelligent Parking System</p>
+            <button class="btn btn-primary btn-block" onclick="closeModal('slip-modal');loadBookings();">Done</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ---- Config ----
+const TOKEN = localStorage.getItem('ips_token');
+const HEADERS = {'Content-Type':'application/json','Authorization':'Bearer '+TOKEN};
+let currentFacility = null;
+let currentSlots = [];
+let pollInterval = null;
+
+// Auth guard
+if (!TOKEN || localStorage.getItem('ips_role') !== 'DRIVER') { window.location.href = 'index.html'; }
+document.getElementById('user-name').textContent = localStorage.getItem('ips_name') || 'Driver';
+
+// ---- Utils ----
+function showAlert(msg, type) { const a=document.getElementById('alert'); a.textContent=msg; a.className='alert show alert-'+type; setTimeout(()=>a.classList.remove('show'),4000); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function fmtDate(iso) { if(!iso) return '-'; const d=new Date(iso); return d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}); }
+function logout() { localStorage.clear(); window.location.href='index.html'; }
+
+function showSection(s) {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('section-search').classList.toggle('hidden', s!=='search');
+    document.getElementById('section-bookings').classList.toggle('hidden', s!=='bookings');
+    if (s==='bookings') loadBookings();
+    if (s==='search') { backToSearch(); searchFacilities(); }
+}
+
+// ---- Search Facilities ----
+async function searchFacilities() {
+    const city = document.getElementById('search-city').value.trim();
+    const type = document.getElementById('search-type').value;
+    document.getElementById('results-loading').classList.remove('hidden');
+    document.getElementById('facility-list').innerHTML = '';
+    document.getElementById('no-results').classList.add('hidden');
+    document.getElementById('slot-view').classList.add('hidden');
+    try {
+        let url = '/api/facilities?';
+        if (city) url += 'city='+encodeURIComponent(city)+'&';
+        if (type && type !== 'ALL') url += 'type='+type;
+        const res = await fetch(url, {headers: HEADERS});
+        const facilities = await res.json();
+        document.getElementById('results-loading').classList.add('hidden');
+        if (!facilities.length) { document.getElementById('no-results').classList.remove('hidden'); return; }
+        renderFacilities(facilities);
+    } catch(e) { showAlert('Failed to load facilities','error'); document.getElementById('results-loading').classList.add('hidden'); }
+}
+
+function renderFacilities(facilities) {
+    const grid = document.getElementById('facility-list');
+    grid.innerHTML = '';
+    facilities.forEach(f => {
+        const pct = f.totalSlots > 0 ? Math.round((f.availableSlots / f.totalSlots)*100) : 0;
+        const color = pct > 50 ? 'var(--accent-emerald)' : pct > 20 ? 'var(--accent-amber)' : 'var(--accent-red)';
+        const div = document.createElement('div');
+        div.className = 'facility-card glass';
+        div.onclick = () => viewFacility(f);
+        div.innerHTML = `
+            <div class="facility-name">${f.name}</div>
+            <div class="facility-address">📍 ${f.address}, ${f.city}${f.state ? ', '+f.state : ''}</div>
+            <div class="facility-meta">
+                <span class="facility-tag">${f.facilityType || 'STANDARD'}</span>
+                <span class="facility-tag">₹${f.pricePerHour}/hr</span>
+                ${(f.amenities||[]).map(a=>'<span class="facility-tag">'+a+'</span>').join('')}
+            </div>
+            <div class="facility-avail">
+                <span class="text-secondary" style="font-size:0.85rem">${f.availableSlots}/${f.totalSlots} available</span>
+                <span style="font-weight:700;color:${color}">${pct}%</span>
+            </div>
+            <div class="avail-bar"><div class="avail-fill" style="width:${pct}%;background:${color}"></div></div>
+        `;
+        grid.appendChild(div);
+    });
+}
+
+// ---- View Facility Slots ----
+async function viewFacility(facility) {
+    currentFacility = facility;
+    document.getElementById('facility-list').classList.add('hidden');
+    document.getElementById('no-results').classList.add('hidden');
+    document.getElementById('slot-view').classList.remove('hidden');
+    document.getElementById('sv-name').textContent = facility.name;
+    document.getElementById('sv-address').textContent = '📍 ' + facility.address + ', ' + facility.city;
+    document.getElementById('sv-price').textContent = '₹' + facility.pricePerHour;
+    document.getElementById('sv-hours').textContent = facility.operatingHours || '24/7';
+    loadSlots();
+    // Start polling
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(loadSlots, 5000);
+}
+
+async function loadSlots() {
+    if (!currentFacility) return;
+    try {
+        const res = await fetch('/api/slots/facility/'+currentFacility.id, {headers: HEADERS});
+        currentSlots = await res.json();
+        renderSlots(currentSlots);
+    } catch(e) { /* silent */ }
+}
+
+function renderSlots(slots) {
+    const grid = document.getElementById('sv-slots');
+    grid.innerHTML = '';
+    let total=slots.length, occupied=0, reserved=0, available=0;
+    slots.forEach(s => {
+        if (s.occupied && s.reserved) reserved++;
+        else if (s.occupied) occupied++;
+        else available++;
+        const div = document.createElement('div');
+        let cls = 'slot-card ';
+        let status = '';
+        if (s.occupied && s.reserved) { cls += 'slot-reserved'; status = 'BOOKED'; }
+        else if (s.occupied) { cls += 'slot-occupied'; status = 'OCCUPIED'; }
+        else if (s.slotType === 'EV_CHARGING') { cls += 'slot-ev'; status = 'EV FREE'; }
+        else if (s.slotType === 'HANDICAP') { cls += 'slot-handicap'; status = 'HC FREE'; }
+        else { cls += 'slot-free'; status = 'FREE'; }
+        div.className = cls;
+        div.innerHTML = `<div class="slot-id">${s.slotNumber}</div><div class="slot-status">${status}</div>`;
+        if (!s.occupied && !s.reserved) {
+            div.onclick = () => openBookingModal(s);
+        }
+        grid.appendChild(div);
+    });
+    document.getElementById('sv-total').textContent = total;
+    document.getElementById('sv-available').textContent = available;
+    document.getElementById('sv-occupied').textContent = occupied;
+    document.getElementById('sv-reserved').textContent = reserved;
+}
+
+function backToSearch() {
+    if (pollInterval) clearInterval(pollInterval);
+    document.getElementById('slot-view').classList.add('hidden');
+    document.getElementById('facility-list').classList.remove('hidden');
+    currentFacility = null;
+    searchFacilities();
+}
+
+// ---- Booking ----
+let bookingSlot = null;
+function openBookingModal(slot) {
+    bookingSlot = slot;
+    document.getElementById('bm-slot').textContent = slot.slotNumber;
+    document.getElementById('bm-type').textContent = slot.slotType;
+    openModal('book-modal');
+}
+
+async function confirmBooking(e) {
+    e.preventDefault();
+    const btn = document.getElementById('bm-btn');
+    btn.disabled = true; btn.textContent = 'Booking...';
+    try {
+        const res = await fetch('/api/bookings', {
+            method: 'POST', headers: HEADERS,
+            body: JSON.stringify({
+                slotId: bookingSlot.id,
+                facilityId: currentFacility.id,
+                vehiclePlate: document.getElementById('bm-plate').value.trim().toUpperCase(),
+                vehicleType: document.getElementById('bm-vtype').value
+            })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            showAlert('Slot booked successfully! Slot: '+bookingSlot.slotNumber, 'success');
+            closeModal('book-modal');
+            loadSlots();
+        } else {
+            showAlert(data.error || 'Booking failed', 'error');
+        }
+    } catch(err) { showAlert('Network error','error'); }
+    finally { btn.disabled=false; btn.textContent='Confirm Booking'; }
+}
+
+// ---- My Bookings ----
+async function loadBookings() {
+    try {
+        const res = await fetch('/api/bookings/my', {headers: HEADERS});
+        const bookings = await res.json();
+        const tbody = document.getElementById('bookings-body');
+        const empty = document.getElementById('bookings-empty');
+        if (!bookings.length) { empty.classList.remove('hidden'); tbody.innerHTML=''; return; }
+        empty.classList.add('hidden');
+        tbody.innerHTML = bookings.map(b => `<tr>
+            <td>${b.facilityName||'-'}</td>
+            <td>${b.slotNumber} <span class="text-muted">(${b.slotType})</span></td>
+            <td>${b.vehiclePlate||'-'}</td>
+            <td>${fmtDate(b.startTime)}</td>
+            <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
+            <td>${b.status==='COMPLETED'?'₹'+b.totalFee.toFixed(2):'-'}</td>
+            <td>${b.status==='ACTIVE'?`<button class="btn btn-danger btn-sm" onclick="completeBooking('${b.id}','${b.facilityName}','${b.slotNumber}','${b.vehiclePlate}',${b.pricePerHour})">Exit & Pay</button> <button class="btn btn-outline btn-sm" onclick="cancelBooking('${b.id}')">Cancel</button>`:''}</td>
+        </tr>`).join('');
+    } catch(e) { showAlert('Failed to load bookings','error'); }
+}
+
+async function completeBooking(id, facName, slotNum, plate, rate) {
+    try {
+        const res = await fetch('/api/bookings/'+id+'/complete', {method:'PUT', headers:HEADERS});
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('sl-facility').textContent = facName;
+            document.getElementById('sl-slot').textContent = slotNum;
+            document.getElementById('sl-vehicle').textContent = plate;
+            document.getElementById('sl-duration').textContent = data.duration || '-';
+            document.getElementById('sl-rate').textContent = '₹'+rate+'/hr';
+            document.getElementById('sl-fee').textContent = data.fee ? data.fee.toFixed(2) : '0';
+            openModal('slip-modal');
+        } else { showAlert(data.error||'Failed','error'); }
+    } catch(e) { showAlert('Network error','error'); }
+}
+
+async function cancelBooking(id) {
+    if (!confirm('Cancel this booking?')) return;
+    try {
+        const res = await fetch('/api/bookings/'+id+'/cancel', {method:'PUT', headers:HEADERS});
+        if (res.ok) { showAlert('Booking cancelled','info'); loadBookings(); }
+        else { const d = await res.json(); showAlert(d.error||'Failed','error'); }
+    } catch(e) { showAlert('Network error','error'); }
+}
+
+// ---- Init ----
+searchFacilities();
+</script>
+</body>
+</html>
