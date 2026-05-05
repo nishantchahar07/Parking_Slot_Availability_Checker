@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPS — Manager Dashboard</title>
+    <link rel="icon" type="image/png" href="icons8-parking-96.png">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav class="navbar">
+    <a href="#" class="navbar-brand"><img src="icons8-parking-96.png" alt="IPS">Intelligent Parking</a>
+    <div class="navbar-actions">
+        <span class="user-badge">🏢 <span id="user-name">Manager</span></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<div class="container page-wrapper">
+    <div id="alert" class="alert"></div>
+    <div class="tabs">
+        <button class="tab active" onclick="showSection('facilities',this)">🏗️ My Facilities</button>
+        <button class="tab" onclick="showSection('create',this)">➕ Add Facility</button>
+        <button class="tab" onclick="showSection('monitor',this)">📊 Live Monitor</button>
+    </div>
+
+    <!-- ========== MY FACILITIES ========== -->
+    <div id="section-facilities">
+        <div id="fac-loading"><div class="spinner"></div></div>
+        <div id="fac-empty" class="hidden" style="text-align:center;padding:60px 0">
+            <p style="font-size:3rem;margin-bottom:16px">🏗️</p><h3>No facilities yet</h3>
+            <p class="text-secondary mt-16">Create your first parking facility to get started</p>
+            <button class="btn btn-primary mt-24" onclick="showSection('create',document.querySelectorAll('.tab')[1])">➕ Add Facility</button>
+        </div>
+        <div id="fac-grid" class="facility-grid"></div>
+    </div>
+
+    <!-- ========== CREATE FACILITY ========== -->
+    <div id="section-create" class="hidden">
+        <div class="glass card" style="max-width:700px;margin:0 auto">
+            <h3 class="card-title mb-24">Register New Parking Facility</h3>
+            <form onsubmit="createFacility(event)">
+                <div class="grid-2">
+                    <div class="form-group"><label class="form-label">Facility Name *</label><input type="text" class="form-input" id="cf-name" placeholder="City Center Parking" required></div>
+                    <div class="form-group"><label class="form-label">Facility Type</label>
+                        <select class="form-select" id="cf-type"><option>MULTI_LEVEL</option><option>OPEN_AIR</option><option>UNDERGROUND</option><option>ROOFTOP</option></select>
+                    </div>
+                </div>
+                <div class="form-group"><label class="form-label">Address *</label><input type="text" class="form-input" id="cf-addr" placeholder="123 Main Street" required></div>
+                <div class="grid-2">
+                    <div class="form-group"><label class="form-label">City *</label><input type="text" class="form-input" id="cf-city" placeholder="Mumbai" required></div>
+                    <div class="form-group"><label class="form-label">State</label><input type="text" class="form-input" id="cf-state" placeholder="Maharashtra"></div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group"><label class="form-label">Price Per Hour (₹) *</label><input type="number" class="form-input" id="cf-price" placeholder="30" step="5" min="5" required></div>
+                    <div class="form-group"><label class="form-label">Operating Hours</label><input type="text" class="form-input" id="cf-hours" placeholder="24/7 or 6AM-10PM"></div>
+                </div>
+                <h3 style="margin:24px 0 16px;font-size:1rem;color:var(--accent-indigo)">Slot Distribution</h3>
+                <div class="grid-3" style="grid-template-columns:repeat(5,1fr)">
+                    <div class="form-group"><label class="form-label">Standard</label><input type="number" class="form-input" id="cf-std" value="15" min="0"></div>
+                    <div class="form-group"><label class="form-label">Covered</label><input type="number" class="form-input" id="cf-covered" value="5" min="0"></div>
+                    <div class="form-group"><label class="form-label">EV</label><input type="number" class="form-input" id="cf-ev" value="3" min="0"></div>
+                    <div class="form-group"><label class="form-label">Handicap</label><input type="number" class="form-input" id="cf-hc" value="2" min="0"></div>
+                    <div class="form-group"><label class="form-label">Open Air</label><input type="number" class="form-input" id="cf-oa" value="5" min="0"></div>
+                </div>
+                <div class="form-group"><label class="form-label">Amenities (comma-separated)</label><input type="text" class="form-input" id="cf-amenities" placeholder="CCTV, SECURITY, WASHROOM"></div>
+                <button type="submit" class="btn btn-success btn-lg btn-block mt-24" id="cf-btn">Create Facility</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ========== LIVE MONITOR ========== -->
+    <div id="section-monitor" class="hidden">
+        <div class="form-group mb-24">
+            <label class="form-label">Select Facility</label>
+            <select class="form-select" id="mon-select" onchange="selectMonitorFacility()" style="max-width:400px"><option value="">-- Select --</option></select>
+        </div>
+        <div id="mon-content" class="hidden">
+            <div class="stats-grid mb-24">
+                <div class="stat-card glass"><div class="stat-value text-gradient" id="mon-total">0</div><div class="stat-label">Total</div></div>
+                <div class="stat-card glass"><div class="stat-value text-emerald" id="mon-free">0</div><div class="stat-label">Available</div></div>
+                <div class="stat-card glass"><div class="stat-value text-red" id="mon-occ">0</div><div class="stat-label">Occupied</div></div>
+                <div class="stat-card glass"><div class="stat-value text-amber" id="mon-res">0</div><div class="stat-label">Reserved</div></div>
+            </div>
+            <!-- Slot Grid + Legend -->
+            <div class="glass card mb-16" style="padding:12px 20px">
+                <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.78rem;font-weight:600;">
+                    <span>🟢 Free</span><span>🔴 Occupied</span><span>🟡 Reserved</span>
+                    <span style="margin-left:auto;color:var(--text-muted)">Click a free slot to toggle occupancy (simulate IoT)</span>
+                </div>
+            </div>
+            <div class="glass card"><div class="slot-grid" id="mon-slots"></div></div>
+            <!-- Bookings for this facility -->
+            <div class="glass card mt-24">
+                <h3 class="card-title mb-16">Recent Bookings</h3>
+                <div style="overflow-x:auto"><table class="bookings-table"><thead><tr><th>Driver</th><th>Slot</th><th>Vehicle</th><th>Start</th><th>End</th><th>Status</th><th>Fee</th></tr></thead><tbody id="mon-bookings"></tbody></table></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API_BASE = 'http://localhost:8080';
+const TOKEN = localStorage.getItem('ips_token');
+const HEADERS = {'Content-Type':'application/json','Authorization':'Bearer '+TOKEN};
+let myFacilities = [];
+let monitorFacilityId = null;
+let monPoll = null;
+
+// Secure Auth guard
+(async function() {
+    if (!TOKEN) return window.location.href = 'index.html';
+    try {
+        const res = await fetch(API_BASE + '/api/auth/me', { headers: HEADERS });
+        if (!res.ok) throw new Error('Invalid token');
+        const data = await res.json();
+        if (data.role !== 'MANAGER') throw new Error('Unauthorized role');
+        document.getElementById('user-name').textContent = data.name || 'Manager';
+    } catch (e) {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    }
+})();
+
+function showAlert(msg,type){const a=document.getElementById('alert');a.textContent=msg;a.className='alert show alert-'+type;setTimeout(()=>a.classList.remove('show'),4000);}
+function fmtDate(iso){if(!iso)return'-';const d=new Date(iso);return d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
+function logout(){localStorage.clear();window.location.href='index.html';}
+
+function showSection(s,btn){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    ['facilities','create','monitor'].forEach(id=>{
+        document.getElementById('section-'+id).classList.toggle('hidden',id!==s);
+    });
+    if(s==='facilities') loadFacilities();
+    if(s==='monitor') loadMonitorSelect();
+    if(monPoll && s!=='monitor'){clearInterval(monPoll);monPoll=null;}
+}
+
+// ---- Load My Facilities ----
+async function loadFacilities(){
+    document.getElementById('fac-loading').style.display='block';
+    document.getElementById('fac-grid').innerHTML='';
+    document.getElementById('fac-empty').classList.add('hidden');
+    try{
+        const res=await fetch(API_BASE + '/api/facilities/my',{headers:HEADERS});
+        myFacilities=await res.json();
+        document.getElementById('fac-loading').style.display='none';
+        if(!myFacilities.length){document.getElementById('fac-empty').classList.remove('hidden');return;}
+        const grid=document.getElementById('fac-grid');
+        myFacilities.forEach(f=>{
+            const pct=f.totalSlots>0?Math.round((f.availableSlots/f.totalSlots)*100):0;
+            const color=pct>50?'var(--accent-emerald)':pct>20?'var(--accent-amber)':'var(--accent-red)';
+            const div=document.createElement('div');
+            div.className='facility-card glass';
+            div.innerHTML=`
+                <div class="flex-between"><div class="facility-name">${f.name}</div>
+                    <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteFacility('${f.id}')">Delete</button>
+                </div>
+                <div class="facility-address">📍 ${f.address}, ${f.city}</div>
+                <div class="facility-meta">
+                    <span class="facility-tag">${f.facilityType||'STANDARD'}</span>
+                    <span class="facility-tag">₹${f.pricePerHour}/hr</span>
+                    <span class="facility-tag">${f.totalSlots} slots</span>
+                </div>
+                <div class="facility-avail mt-16">
+                    <span class="text-secondary" style="font-size:0.85rem">${f.availableSlots}/${f.totalSlots} available</span>
+                    <span style="font-weight:700;color:${color}">${pct}%</span>
+                </div>
+                <div class="avail-bar"><div class="avail-fill" style="width:${pct}%;background:${color}"></div></div>
+            `;
+            grid.appendChild(div);
+        });
+    }catch(e){showAlert('Failed to load','error');document.getElementById('fac-loading').style.display='none';}
+}
+
+async function deleteFacility(id){
+    if(!confirm('Delete this facility and all its slots?'))return;
+    try{
+        const res=await fetch(API_BASE + '/api/facilities/'+id,{method:'DELETE',headers:HEADERS});
+        if(res.ok){showAlert('Facility deleted','success');loadFacilities();}
+        else{const d=await res.json();showAlert(d.error||'Failed','error');}
+    }catch(e){showAlert('Error','error');}
+}
+
+// ---- Create Facility ----
+async function createFacility(e){
+    e.preventDefault();
+    const btn=document.getElementById('cf-btn');btn.disabled=true;btn.textContent='Creating...';
+    const amenStr=document.getElementById('cf-amenities').value;
+    const amenities=amenStr?amenStr.split(',').map(s=>s.trim().toUpperCase()):[];
+    try{
+        const res=await fetch(API_BASE + '/api/facilities',{method:'POST',headers:HEADERS,body:JSON.stringify({
+            name:document.getElementById('cf-name').value,
+            address:document.getElementById('cf-addr').value,
+            city:document.getElementById('cf-city').value,
+            state:document.getElementById('cf-state').value,
+            pricePerHour:parseFloat(document.getElementById('cf-price').value),
+            facilityType:document.getElementById('cf-type').value,
+            operatingHours:document.getElementById('cf-hours').value||'24/7',
+            standardSlots:parseInt(document.getElementById('cf-std').value)||0,
+            coveredSlots:parseInt(document.getElementById('cf-covered').value)||0,
+            evChargingSlots:parseInt(document.getElementById('cf-ev').value)||0,
+            handicapSlots:parseInt(document.getElementById('cf-hc').value)||0,
+            openAirSlots:parseInt(document.getElementById('cf-oa').value)||0,
+            amenities:amenities,latitude:0,longitude:0,totalSlots:0
+        })});
+        if(res.ok){showAlert('Facility created successfully!','success');e.target.reset();showSection('facilities',document.querySelectorAll('.tab')[0]);}
+        else{const d=await res.json();showAlert(d.error||'Failed','error');}
+    }catch(err){showAlert('Network error','error');}
+    finally{btn.disabled=false;btn.textContent='Create Facility';}
+}
+
+// ---- Live Monitor ----
+async function loadMonitorSelect(){
+    try{
+        const res=await fetch(API_BASE + '/api/facilities/my',{headers:HEADERS});
+        myFacilities=await res.json();
+        const sel=document.getElementById('mon-select');
+        sel.innerHTML='<option value="">-- Select Facility --</option>';
+        myFacilities.forEach(f=>{sel.innerHTML+=`<option value="${f.id}">${f.name} (${f.city})</option>`;});
+    }catch(e){}
+}
+
+function selectMonitorFacility(){
+    const id=document.getElementById('mon-select').value;
+    if(!id){document.getElementById('mon-content').classList.add('hidden');if(monPoll)clearInterval(monPoll);return;}
+    monitorFacilityId=id;
+    document.getElementById('mon-content').classList.remove('hidden');
+    loadMonitorData();
+    if(monPoll)clearInterval(monPoll);
+    monPoll=setInterval(loadMonitorData,4000);
+}
+
+async function loadMonitorData(){
+    if(!monitorFacilityId)return;
+    try{
+        const res=await fetch(API_BASE + '/api/slots/facility/'+monitorFacilityId,{headers:HEADERS});
+        const slots=await res.json();
+        renderMonitorSlots(slots);
+        // Load bookings
+        const bRes=await fetch(API_BASE + '/api/bookings/facility/'+monitorFacilityId,{headers:HEADERS});
+        const bookings=await bRes.json();
+        renderMonitorBookings(bookings);
+    }catch(e){}
+}
+
+function renderMonitorSlots(slots){
+    const grid=document.getElementById('mon-slots');
+    grid.innerHTML='';
+    let total=slots.length,free=0,occ=0,res=0;
+    slots.forEach(s=>{
+        if(s.occupied&&s.reserved)res++;else if(s.occupied)occ++;else free++;
+        const div=document.createElement('div');
+        let cls='slot-card ';
+        let status='';
+        if(s.occupied&&s.reserved){cls+='slot-reserved';status='BOOKED';}
+        else if(s.occupied){cls+='slot-occupied';status='OCCUPIED';}
+        else if(s.slotType==='EV_CHARGING'){cls+='slot-ev';status='EV';}
+        else if(s.slotType==='HANDICAP'){cls+='slot-handicap';status='HC';}
+        else{cls+='slot-free';status='FREE';}
+        div.className=cls;
+        div.innerHTML=`<div class="slot-id">${s.slotNumber}</div><div class="slot-status">${status}</div>`;
+        // Manager can toggle slot occupancy (simulate IoT sensor)
+        if(!s.reserved){div.onclick=()=>toggleSlot(s.id);}
+        grid.appendChild(div);
+    });
+    document.getElementById('mon-total').textContent=total;
+    document.getElementById('mon-free').textContent=free;
+    document.getElementById('mon-occ').textContent=occ;
+    document.getElementById('mon-res').textContent=res;
+}
+
+async function toggleSlot(slotId){
+    try{
+        await fetch(API_BASE + '/api/slots/'+slotId+'/toggle',{method:'PUT',headers:HEADERS});
+        loadMonitorData();
+    }catch(e){}
+}
+
+function renderMonitorBookings(bookings){
+    const tbody=document.getElementById('mon-bookings');
+    if(!bookings.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:20px">No bookings yet</td></tr>';return;}
+    tbody.innerHTML=bookings.slice(0,20).map(b=>`<tr>
+        <td>${b.driverName||'-'}</td><td>${b.slotNumber}</td><td>${b.vehiclePlate||'-'}</td>
+        <td>${fmtDate(b.startTime)}</td><td>${fmtDate(b.endTime)}</td>
+        <td><span class="badge badge-${b.status.toLowerCase()}">${b.status}</span></td>
+        <td>${b.status==='COMPLETED'?'₹'+b.totalFee.toFixed(2):'-'}</td>
+    </tr>`).join('');
+}
+
+// Init
+loadFacilities();
+</script>
+</body>
+</html>
