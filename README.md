@@ -190,8 +190,8 @@ The diagram also illustrates the workflow:
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/Souvikdas040/intelligent-parking-system.git
-cd intelligent-parking-system
+git clone https://github.com/nishantchahar07/Parking_Slot_Availability_Checker.git
+cd Parking_Slot_Availability_Checker
 ```
 
 ### Backend Setup
@@ -420,12 +420,12 @@ Tests can verify:
 
 ## License
 [Apache License](./LICENSE)
-Copyright (c) 2025 Souvik Das
+Copyright (c) 2025 Nishant Chahar
 
 ---
 
 ## Author
-**Souvik Das** 
+**Nishant Chahar** 
 Full Stack Developer
 
 Feel free to connect on LinkedIn or GitHub once you publish this project.
